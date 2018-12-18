@@ -5,8 +5,7 @@ module.exports = {
     entry: './src/index.js',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: 'weapp-pixi-loader.js',
-        library: 'ResLoader'
+        filename: 'weapp-pixi-loader.js'
     },
     externals: {
         'pixi.js': 'PIXI'
