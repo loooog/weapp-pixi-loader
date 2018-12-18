@@ -215,11 +215,11 @@ export default class ResLoader {
       const resource = this.resources[i];
 
       if (resource.type === ResLoader.RES_TYPE_TEXTURE) {
-        await this.loadTexture(resource.id, resource.url);
+        await this.loadTexture(resource.id, resource.file);
       } else if (resource.type === ResLoader.RES_TYPE_SPRITE_SHEET) {
-        await this.loadSpritesheet(resource.id, resource.url);
+        await this.loadSpritesheet(resource.id, resource.file);
       } else if (resource.type === ResLoader.RES_TYPE_FONT) {
-        await this.loadFont(resource.id, resource.url);
+        await this.loadFont(resource.id, resource.file);
       }
 
       if (typeof this.onLoadProgress === 'function') {
