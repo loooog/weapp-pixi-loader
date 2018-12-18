@@ -1,5 +1,5 @@
-import * as PIXI from 'pixi.js';
-import SparkMD5 from 'spark-md5';
+import * as PIXI from "pixi.js";
+import SparkMD5 from "spark-md5";
 
 export default class ResLoader {
   static RES_TYPE_TEXTURE = 0;
