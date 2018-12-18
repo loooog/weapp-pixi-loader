@@ -8,8 +8,8 @@ module.exports = {
         filename: 'weapp-pixi-loader.js'
     },
     externals: {
-        'pixi.js': 'pixi.js',
-        'spark-md5': 'spark-md5'
+        'pixi.js': 'PIXI',
+        'spark-md5': 'SparkMD5' 
     },
     module: {
         rules: [
