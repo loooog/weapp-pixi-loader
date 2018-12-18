@@ -9,8 +9,7 @@ module.exports = {
         library: 'ResLoader'
     },
     externals: {
-        'pixi.js': 'PIXI',
-        'spark-md5': 'SparkMD5' 
+        'pixi.js': 'PIXI'
     },
     module: {
         rules: [
