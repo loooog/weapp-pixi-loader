@@ -176,7 +176,8 @@ export default class ResLoader {
     const texture = await this._loadBaseTexture(image);
 
     if (texture) {
-      PIXI.Texture.addToCache(texture, id);
+      console.log(PIXI.utils);
+      PIXI.BaseTexture.addToCache(texture, id);
       return true;
     }
 
