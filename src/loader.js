@@ -165,7 +165,7 @@ export default class ResLoader {
         const img = wx.createImage();
 
         img.src = imagePath;
-        img.onload = () => resolve(PIXI.BaseTexture.from(img));
+        img.onload = () => resolve(new PIXI.BaseTexture(img));
       });
     }
 
@@ -176,7 +176,6 @@ export default class ResLoader {
     const texture = await this._loadBaseTexture(image);
 
     if (texture) {
-      console.log(PIXI.utils);
       PIXI.BaseTexture.addToCache(texture, id);
       return true;
     }
