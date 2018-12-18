@@ -1,17 +1,16 @@
 {
   "name": "weapp-pixi-loader",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "微信小游戏pixi.js资源管理以及加载器",
-  "main": "index.js",
+  "main": "./dist/weapp-pixi-loader.js",
   "scripts": {
     "build": "webpack --mode production"
   },
-  "files" : [
+  "files": [
     "dist/",
     "package.json",
     "README.md"
   ],
-  "main" : "./dist/weapp-pixi-loader.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/xmean/weapp-pixi-loader.git"
