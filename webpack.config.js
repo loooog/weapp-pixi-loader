@@ -10,7 +10,7 @@ module.exports = {
         libraryTarget: 'umd'
     },
     externals: {
-        // 'pixi.js': 'PIXI'
+        'pixi.js': 'pixi.js'
     },
     module: {
         rules: [
