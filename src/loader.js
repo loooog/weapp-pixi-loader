@@ -3,9 +3,13 @@ import SparkMD5 from 'spark-md5';
 const DOMParser = require('xmldom').DOMParser;
 
 export default class ResLoader {
+  static RES_CACHE_HIT = 0;
+  static RES_CACHE_FETCH = 1;
+  static RES_CACHE_EXPIRE = 2;
+
   static RES_TYPE_TEXTURE = 0;
   static RES_TYPE_SPRITE_SHEET = 1;
-  static RES_TYPE_FONT = 2;
+  static RES_TYPE_BITMAP_FONT = 2;
 
   constructor(env, cloudPath, entryFileName) {
     wx.cloud.init({
@@ -24,6 +28,7 @@ export default class ResLoader {
     const localFile = this.localPath + '/' + filePath;
     const cloudFile = this.cloudPath + '/' + filePath;
     let needDownload = false;
+    let cacheType = ResLoader.RES_CACHE_FETCH;
 
     try {
       this.fs.accessSync(localFile);
@@ -36,9 +41,11 @@ export default class ResLoader {
     if (!needDownload) {
       if (new SparkMD5.ArrayBuffer().append(this.fs.readFileSync(localFile)).end(false) === md5) {
         needDownload = false;
+        cacheType = ResLoader.RES_CACHE_HIT;
       } else {
         this.fs.unlinkSync(localFile);
         needDownload = true;
+        cacheType = ResLoader.RES_CACHE_EXPIRE;
       }
     }
 
@@ -63,13 +70,11 @@ export default class ResLoader {
         this.fs.saveFileSync(res.tempFilePath, localFile);
       }).catch(console.error);
     }
+
+    return cacheType;
   }
 
-  sync(onSyncComplete) {
-    if (typeof onComplete === 'function') {
-      this.onSyncComplete = onSyncComplete;
-    }
-
+  _sync(onComplete) {
     wx.cloud.downloadFile({
       fileID: this.cloudPath + '/' + this.entryFileName,
       success: (res) => {
@@ -86,14 +91,19 @@ export default class ResLoader {
                 const total = this.assetList.length;
 
                 for (const fileItem of this.assetList) {
-                  await this._syncLocalFile(fileItem.filename, fileItem.md5);
+                  const cache = await this._syncLocalFile(fileItem.filename, fileItem.md5);
+
                   if (typeof this.onSyncProgress === 'function') {
-                    this.onSyncProgress(fileItem.filename, ++progress / total);
+                    this.onSyncProgress({
+                      filename: fileItem.filename,
+                      md5: fileItem.md5,
+                      cache: cache
+                    }, ++progress / total);
                   }
                 }
 
-                if (typeof this.onSyncComplete === 'function') {
-                  this.onSyncComplete();
+                if (typeof onComplete === 'function') {
+                  onComplete();
                 }
               },
               fail: console.error
@@ -104,36 +114,6 @@ export default class ResLoader {
       },
       fail: console.error
     });
-  }
-
-  addTexture(id, image) {
-    this.resources.push({
-      id: id.trim().length > 0 ? id.trim() : image.trim(),
-      file: image.trim(),
-      type: ResLoader.RES_TYPE_TEXTURE
-    });
-
-    return this;
-  }
-
-  addSpriteSheet(json, image) {
-    this.resources.push({
-      id: json,
-      file: image.trim(),
-      type: ResLoader.RES_TYPE_SPRITE_SHEET
-    });
-
-    return this;
-  }
-
-  addFont(fnt, image) {
-    this.resources.push({
-      id: fnt,
-      file: image.trim(),
-      type: ResLoader.RES_TYPE_FONT
-    });
-
-    return this;
   }
 
   _getFilePath(file) {
@@ -193,7 +173,7 @@ export default class ResLoader {
       data = JSON.parse(this.fs.readFileSync(jsonPath, 'utf-8'));
     } catch(error) {
       if(typeof this.onLoadError === 'function') {
-        this.onLoadError(json, 'read spritesheet .json file failed');
+        this.onLoadError(json, 'parse spritesheet .json file failed');
       }
 
       return false;
@@ -214,30 +194,60 @@ export default class ResLoader {
   async loadFont(fnt, image) {
     const fntPath = this._getFilePath(fnt);
     const texture = new PIXI.Texture(await this._loadBaseTexture(image));
-    const xml = new DOMParser().parseFromString(this.fs.readFileSync(fntPath, 'utf-8'));
-    // let xml = null;
-    // try {
-    //   xml = new DOMParser().parseFromString(this.fs.readFileSync(fntPath, 'utf-8'));
-    // } catch(error) {
-    //   if(typeof this.onLoadError === 'function') {
-    //     this.onLoadError(fnt, 'read font .fnt file failed');
-    //   }
+    let data = null;
 
-    //   return false;
-    // }
+    try {
+      data = new DOMParser().parseFromString(this.fs.readFileSync(fntPath, 'utf-8'));
+    } catch(error) {
+      if(typeof this.onLoadError === 'function') {
+        this.onLoadError(fnt, 'parse bitmap font .fnt file failed');
+      }
 
-    if(xml && texture) {
-      return PIXI.extras.BitmapText.registerFont(xml, texture);
+      return false;
+    }
+
+    if(data && texture) {
+      return PIXI.extras.BitmapText.registerFont(data, texture);
     }
 
     return false;
   }
 
-  async load(onLoadComplete) {
-    if (typeof onLoadComplete === 'function') {
-      this.onLoadComplete = onLoadComplete;
+  _isFileExt(filepath, ext) {
+    const len = filepath.length;
+
+    return filepath.substring(len - ext.length, len) === ext;
+  }
+
+  add(id, uri) {
+    if(typeof id != 'string') {
+      throw new TypeError('"id" should be a string identifer of cached texture, .json file for spritesheet or .fnt xml file for bitmap font');
     }
 
+    const tId = id.trim();
+
+    if(tId.length <= 0) {
+      throw new Error('"id" can not be empty');
+    }
+
+    let type = ResLoader.RES_TYPE_TEXTURE;
+
+    if(this._isFileExt(tId, '.json')) {
+      type = ResLoader.RES_TYPE_SPRITE_SHEET;
+    } else if(this._isFileExt(tId, '.fnt')) {
+      type = ResLoader.RES_TYPE_BITMAP_FONT;
+    }
+
+    this.resources.push({
+      id: tId,
+      uri: uri.trim(),
+      type: type
+    });
+
+    return this;
+  }
+
+  async _loadAll() {
     const total = this.resources.length;
     let progress = 0;
 
@@ -245,11 +255,11 @@ export default class ResLoader {
       const resource = this.resources[i];
 
       if (resource.type === ResLoader.RES_TYPE_TEXTURE) {
-        await this.loadTexture(resource.id, resource.file);
+        await this.loadTexture(resource.id, resource.uri);
       } else if (resource.type === ResLoader.RES_TYPE_SPRITE_SHEET) {
-        await this.loadSpritesheet(resource.id, resource.file);
-      } else if (resource.type === ResLoader.RES_TYPE_FONT) {
-        await this.loadFont(resource.id, resource.file);
+        await this.loadSpritesheet(resource.id, resource.uri);
+      } else if (resource.type === ResLoader.RES_TYPE_BITMAP_FONT) {
+        await this.loadFont(resource.id, resource.uri);
       }
 
       if (typeof this.onLoadProgress === 'function') {
@@ -259,6 +269,43 @@ export default class ResLoader {
 
     if (typeof this.onLoadComplete === 'function') {
       this.onLoadComplete();
+    }
+  }
+
+  async load(options) {
+    let loaderOptions = {
+      sync : true,
+      onError : (file, error) => {
+        console.error('Error while loading file "' + file + '", ' + error);
+      }
+    }
+
+    if(typeof options === 'object') {
+      Object.assign(loaderOptions, options);
+    }
+
+    if(typeof loaderOptions.onSync === 'function') {
+      this.onSyncProgress = loaderOptions.onSync;
+    }
+
+    if(typeof loaderOptions.onComplete === 'function') {
+      this.onLoadComplete = loaderOptions.onComplete;
+    }
+
+    if(typeof loaderOptions.onError === 'function') {
+      this.onLoadError = loaderOptions.onError;
+    }
+
+    if(typeof loaderOptions.onProgress === 'function') {
+      this.onLoadProgress = loaderOptions.onProgress;
+    }
+
+    if(loaderOptions.sync) {
+      this._sync(() => {
+        this._loadAll();
+      })
+    } else {
+      this._loadAll();
     }
   }
 }

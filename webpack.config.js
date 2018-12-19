@@ -10,8 +10,8 @@ module.exports = {
         libraryTarget: 'umd'
     },
     externals: {
-        'spark-md5' : 'spark-md5',
         'pixi.js': 'pixi.js',
+        'spark-md5' : 'spark-md5',
         'xmldom' : 'xmldom'
     },
     module: {
