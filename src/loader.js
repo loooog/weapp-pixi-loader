@@ -1,5 +1,6 @@
 import * as PIXI from 'pixi.js';
 import SparkMD5 from 'spark-md5';
+const DOMParser = require('xmldom').DOMParser;
 
 export default class ResLoader {
   static RES_TYPE_TEXTURE = 0;
@@ -125,9 +126,9 @@ export default class ResLoader {
     return this;
   }
 
-  addFont(font, image) {
+  addFont(fnt, image) {
     this.resources.push({
-      id: font,
+      id: fnt,
       file: image.trim(),
       type: ResLoader.RES_TYPE_FONT
     });
@@ -176,7 +177,7 @@ export default class ResLoader {
     const texture = await this._loadBaseTexture(image);
 
     if (texture) {
-      PIXI.BaseTexture.addToCache(texture, id);
+      PIXI.Texture.addToCache(new PIXI.Texture(texture), id);
       return true;
     }
 
@@ -184,14 +185,25 @@ export default class ResLoader {
   }
 
   async loadSpritesheet(json, image) {
-    const jsonFile = this._getFilePath(json);
-    const texture = this._loadBaseTexture(image);
+    const jsonPath = this._getFilePath(json);
+    const texture = await this._loadBaseTexture(image);
+    let data = null;
 
-    if (jsonFile && texture) {
+    try {
+      data = JSON.parse(this.fs.readFileSync(jsonPath, 'utf-8'));
+    } catch(error) {
+      if(typeof this.onLoadError === 'function') {
+        this.onLoadError(json, 'read spritesheet .json file failed');
+      }
+
+      return false;
+    }
+
+    if (data && texture) {
       return await new Promise((resolve) => {
         new PIXI.Spritesheet(
           texture,
-          JSON.parse(this.fs.readFileSync(jsonFile, 'utf-8'))
+          data
         ).parse(resolve);
       });
     }
@@ -199,9 +211,27 @@ export default class ResLoader {
     return false;
   }
 
-  // aysnc loadFont(font, url) {
+  async loadFont(fnt, image) {
+    const fntPath = this._getFilePath(fnt);
+    const texture = new PIXI.Texture(await this._loadBaseTexture(image));
+    const xml = new DOMParser().parseFromString(this.fs.readFileSync(fntPath, 'utf-8'));
+    // let xml = null;
+    // try {
+    //   xml = new DOMParser().parseFromString(this.fs.readFileSync(fntPath, 'utf-8'));
+    // } catch(error) {
+    //   if(typeof this.onLoadError === 'function') {
+    //     this.onLoadError(fnt, 'read font .fnt file failed');
+    //   }
 
-  // }
+    //   return false;
+    // }
+
+    if(xml && texture) {
+      return PIXI.extras.BitmapText.registerFont(xml, texture);
+    }
+
+    return false;
+  }
 
   async load(onLoadComplete) {
     if (typeof onLoadComplete === 'function') {

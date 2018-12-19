@@ -11,7 +11,8 @@ module.exports = {
     },
     externals: {
         'spark-md5' : 'spark-md5',
-        'pixi.js': 'pixi.js'
+        'pixi.js': 'pixi.js',
+        'xmldom' : 'xmldom'
     },
     module: {
         rules: [
