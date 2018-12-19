@@ -1,6 +1,6 @@
 {
   "name": "weapp-pixi-loader",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "description": "微信小游戏pixi.js资源管理以及加载器",
   "main": "dist/weapp-pixi-loader.js",
   "module": "src/index.js",
